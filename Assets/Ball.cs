@@ -2,17 +2,24 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+//TODO: Ball을 범용 RigidBody로 구현. 
 public class Ball : MonoBehaviour
 {
+    const float AirDensity = 1;
     Vector3 gravity = new Vector3(0, -9.81f, 0);
     // Start is called before the first frame update
     void Start()
     {
+        AddSpin(rotVel0);
         Shoot();
     }
 
     public FootPrint footPrint;
     public bool onDrag;
+    public bool onSpinForce;
+    public float spinFactor = 1f; 
+    public float mass = 0.45f;
+    public float radius = 0.11f;
     public float footPrintLoopTime = .5f;
     public float bounceness = .5f;
     public Vector3 pos0 = new Vector3();
@@ -20,6 +27,10 @@ public class Ball : MonoBehaviour
     
     public Vector3 rotVel0 = new Vector3();
     bool shoot = false;
+
+    public void AddSpin(Vector3 vel){
+        rotVel = vel;
+    }
     
     public void Shoot(){
         time = 0;
@@ -35,6 +46,10 @@ public class Ball : MonoBehaviour
     public Vector3 pos = Vector3.zero;
     public Vector3 acc = Vector3.zero;
 
+    Vector3 rotVel = Vector3.zero;
+    Vector3 rotAcc = Vector3.zero;
+    Quaternion rotPos = Quaternion.Euler(Vector3.zero);
+
     void FixedUpdate(){
         if (shoot == false)
             return;
@@ -44,11 +59,17 @@ public class Ball : MonoBehaviour
         pos = CalcPos(pos, vel, acc, delta);
         vel = CalcVel(vel, acc, delta);
 
-        var drag = onDrag? CalcDragAcc(vel, 0.45f): Vector3.zero;
+        rotAcc = CalcSpinDragAcc(rotVel);
+        rotVel = CalcVel(rotVel, rotAcc, delta);
+
+        var drag = onDrag? CalcDragAcc(vel) : Vector3.zero;
+        var spinForce = onSpinForce? CalcSpinForceAcc(vel, rotVel) : Vector3.zero;
         if (onGround)
-            acc = drag;
+            acc = drag + spinForce;
         else
-            acc = drag + gravity;
+            acc = drag + gravity + spinForce;
+
+        this.transform.Rotate(rotVel, Space.Self);
 
         if (onReflection){
             footPrint.Draw(pos);
@@ -84,12 +105,21 @@ public class Ball : MonoBehaviour
     //가정1. 완전한 구(항력계수: 0.47)
     //가정2. 온도: 0도(공기밀도: 1.293)
     //가정3. 5호 축구공(지름: 0.22, 무게: 0.45)
-    Vector3 CalcDragAcc(Vector3 vel, float mass){
-        var d = 1.293f;
+    Vector3 CalcDragAcc(Vector3 vel){
         var cd = 0.47f;
-        var a = Mathf.Pow(0.11f, 2) * Mathf.PI;
+        var a = Mathf.Pow(radius, 2) * Mathf.PI;
         var u = vel.normalized * -1;
-        var force = 0.5f * d * Mathf.Pow(vel.magnitude, 2) * cd * a * u;
+        var force = 0.5f * AirDensity * Mathf.Pow(vel.magnitude, 2) * cd * a * u;
+
+        // Debug.Log($"drag force: {force}, acc: {force/mass}, vel: {vel}");
+        return force / mass;
+    }
+
+    Vector3 CalcSpinDragAcc(Vector3 w){
+        var cd = 0.47f;
+        var a = Mathf.Pow(radius, 2) * Mathf.PI;
+        var u = w.normalized * -1;
+        var force = 0.5f * AirDensity * Mathf.Pow(w.magnitude, 2) * cd * a * u;
 
         // Debug.Log($"drag force: {force}, acc: {force/mass}, vel: {vel}");
         return force / mass;
@@ -99,6 +129,15 @@ public class Ball : MonoBehaviour
     Vector3 CalcReflectionVelocity(Vector3 vel, Vector3 nVector){
         var n = nVector.normalized;
         return  (vel - 2f * Vector3.Dot(vel, n) * n);
+    }
+
+    Vector3 CalcSpinForceAcc(Vector3 vel, Vector3 rotVel){
+        var w = rotVel; //* Mathf.Deg2Rad;
+        var a = Mathf.Pow(radius, 2) * Mathf.PI;
+        var cv = Vector3.Cross(w.normalized, vel.normalized);
+        var force = 0.5f * spinFactor * w.magnitude * vel.magnitude * radius * a * cv;
+
+        return force / mass;
     }
 
     public bool onGround;
