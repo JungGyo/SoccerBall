@@ -16,9 +16,14 @@ public class FootPrint : MonoBehaviour
         }
     }
 
+    int num = 0;
     public void Draw(Vector3 pos){
-        var obj = Instantiate(footPrint, footPrintGroup);
-        footPrintPool.Add(obj);
-        footPrint.transform.position = pos;
+        if (footPrintPool.Count <= num){
+            var obj = Instantiate(footPrint, footPrintGroup);
+            footPrintPool.Add(obj);
+        }
+
+        footPrintPool[num].transform.position = pos;
+        num++;
     }
 }
