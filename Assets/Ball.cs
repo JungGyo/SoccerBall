@@ -10,11 +10,11 @@ public class Ball : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        AddSpin(rotVel0);
         Shoot();
     }
 
     public FootPrint footPrint;
+    public bool shoot = false;
     public bool onDrag;
     public bool onSpinForce;
     public float spinFactor = 1f; 
@@ -26,18 +26,15 @@ public class Ball : MonoBehaviour
     public Vector3 vel0 = new Vector3();
     
     public Vector3 rotVel0 = new Vector3();
-    bool shoot = false;
 
-    public void AddSpin(Vector3 vel){
-        rotVel = vel;
-    }
-    
     public void Shoot(){
         time = 0;
         vel = vel0;
         pos = pos0;
         acc = gravity;
-        shoot = true;
+        rotVel = rotVel0;
+        footPrint.Draw(pos);
+        //shoot = true;
     }
 
     float time = 0;
@@ -50,34 +47,27 @@ public class Ball : MonoBehaviour
     Vector3 rotAcc = Vector3.zero;
     Quaternion rotPos = Quaternion.Euler(Vector3.zero);
 
-    void FixedUpdate(){
+    public float posMax = 10;
+    void Update(){
         if (shoot == false)
             return;
 
-        var delta = Time.fixedDeltaTime;
-            
+        var delta = Time.deltaTime;
+
         pos = CalcPos(pos, vel, acc, delta);
         vel = CalcVel(vel, acc, delta);
+
+        posMax = Mathf.Max(posMax, pos.y);
 
         rotAcc = CalcSpinDragAcc(rotVel);
         rotVel = CalcVel(rotVel, rotAcc, delta);
 
         var drag = onDrag? CalcDragAcc(vel) : Vector3.zero;
         var spinForce = onSpinForce? CalcSpinForceAcc(vel, rotVel) : Vector3.zero;
-        if (onGround)
-            acc = drag + spinForce;
-        else
-            acc = drag + gravity + spinForce;
+        acc = drag + gravity + spinForce;
 
         this.transform.Rotate(rotVel, Space.Self);
 
-        if (onReflection){
-            footPrint.Draw(pos);
-            vel = CalcReflectionVelocity(vel, Vector3.up) * bounceness;
-            pos = CalcPos(pos, vel, acc, delta);
-            onReflection = false;
-            onGround = false;
-        }
 
         if (time >= lastFootPrintTime + footPrintLoopTime){
             footPrint.Draw(pos);
@@ -86,20 +76,15 @@ public class Ball : MonoBehaviour
 
         this.transform.position = pos;
         time += delta;
-
         // Debug.Log($"time: {time}/pos: {pos.x},{pos.y},{pos.z}/");
     }
 
-    Vector3 CalcPos(Vector3 p0, Vector3 v0, Vector3 acc, float t){
-        var p1 = p0 + v0 * t + 0.5f * acc * Mathf.Pow(t, 2);
-        if (onGround)
-            p1 = CalibGroundPos(p1);
-
-        return p1;
+    Vector3 CalcPos(Vector3 p0, Vector3 v0, Vector3 a0, float t){
+        return p0 + v0 * t + 0.5f * a0 * Mathf.Pow(t, 2);
     }
 
-    Vector3 CalcVel(Vector3 v0,  Vector3 acc, float t){
-        return v0 + acc * t;
+    Vector3 CalcVel(Vector3 v0, Vector3 a0, float t){
+        return v0 + a0 * t;
     }
     
     //가정1. 완전한 구(항력계수: 0.47)
@@ -128,7 +113,7 @@ public class Ball : MonoBehaviour
     //완전 탄성 충돌
     Vector3 CalcReflectionVelocity(Vector3 vel, Vector3 nVector){
         var n = nVector.normalized;
-        return  (vel - 2f * Vector3.Dot(vel, n) * n);
+        return  (vel - 2f * Vector3.Dot(vel, n) * n); //Vector3.Reflect(vel, n);
     }
 
     Vector3 CalcSpinForceAcc(Vector3 vel, Vector3 rotVel){
@@ -140,37 +125,34 @@ public class Ball : MonoBehaviour
         return force / mass;
     }
 
-    public bool onGround;
     public bool onReflection;
-    void OnTriggerEnter(Collider col){
-        if (col.gameObject.tag == "GROUND"){
-            if (onGround == false && vel.y < 0){
-                onReflection = true;
-            }
-            onGround = true;
-            // Debug.Log($"OnTriggerEnter");
+
+    void OnCollisionEnter(Collision col){
+        if (col.gameObject.tag == "WALL"){
+            var contact = col.GetContact(0);
+            //pos = CalibContactPos(-contact.normal.normalized, contact.separation);
+            vel = CalcReflectionVelocity(vel, contact.normal.normalized) * bounceness;
+            footPrint.Draw(pos);
+            Debug.Log($"time: {time} - OnCollisionEnter");
         }
     }
-
     void OnTriggerStay(Collider col){
-        if (col.gameObject.tag == "GROUND"){
-            onGround = true;
+        if (col.gameObject.tag == "WALL"){
+            //onGround = true;
             // Debug.Log($"OnTriggerStay");
         }
     }
 
     void OnTriggerExit(Collider col){
-        if (col.gameObject.tag == "GROUND"){
-            onGround = false;
+        if (col.gameObject.tag == "WALL"){
+            //onGround = false;
             // Debug.Log($"OnTriggerExit");
         }
     }
 
-    Vector3 CalibGroundPos(Vector3 p){
-        var pp = p;
-        if (p.y < 1)
-            pp = new Vector3(p.x, 1, p.z);
-
-        return pp;
-    }
+    // Vector3 CalibContactPos(Vector3 normal, float dist){
+    //     var newPos = pos + normal.normalized * dist;
+    //     Debug.Log($"pos: {pos}/ new: {newPos}");
+    //     return newPos;
+    // }
 }

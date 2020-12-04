@@ -11,8 +11,11 @@ public class FootPrint : MonoBehaviour
     void Awake(){
         if (footPrintPool == null){
             footPrintPool = new List<GameObject>();
-            for(int i = 0; i < 20; i++)
-                footPrintPool.Add(Instantiate(footPrint, footPrintGroup));
+            for(int i = 0; i < 20; i++){
+                var obj = Instantiate(footPrint, footPrintGroup);
+                footPrintPool.Add(obj);
+                obj.gameObject.SetActive(false);
+            }
         }
     }
 
@@ -22,7 +25,7 @@ public class FootPrint : MonoBehaviour
             var obj = Instantiate(footPrint, footPrintGroup);
             footPrintPool.Add(obj);
         }
-
+        footPrintPool[num].gameObject.SetActive(true);
         footPrintPool[num].transform.position = pos;
         num++;
     }
