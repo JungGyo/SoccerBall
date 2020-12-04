@@ -6,35 +6,35 @@ using UnityEngine;
 public class Ball : MonoBehaviour
 {
     const float AirDensity = 1;
-    Vector3 gravity = new Vector3(0, -9.81f, 0);
-    // Start is called before the first frame update
-    void Start()
-    {
-        Shoot();
-    }
+    Vector3 gravity {get{return new Vector3(0, -9.81f, 0);}} //const gravity
 
     public FootPrint footPrint;
-    public bool shoot = false;
     public bool onDrag;
     public bool onSpinForce;
     public float spinFactor = 1f; 
-    public float mass = 0.45f;
-    public float radius = 0.11f;
-    public float footPrintLoopTime = .5f;
-    public float bounceness = .5f;
-    public Vector3 pos0 = new Vector3();
-    public Vector3 vel0 = new Vector3();
+    public float bounceness = (0.77f + 0.9f)/2f; //축구공 반발계수 0.77~0.9.
+    bool shoot = false;
+    float mass = 0.45f;
+    float radius = 0.11f;
+    float footPrintLoopTime = .2f;
     
-    public Vector3 rotVel0 = new Vector3();
+    Vector3 vel0 = new Vector3();  
+    Vector3 rotVel0 = new Vector3();
 
-    public void Shoot(){
+    public void Spawn(Vector3 position){
+        pos = position;
+    }
+
+    public void Shoot(Vector3 velocity, Vector3 rotationVelocity){
+        this.vel0 = velocity;
+        this.rotVel0 = rotationVelocity;
+        
         time = 0;
         vel = vel0;
-        pos = pos0;
-        acc = gravity;
         rotVel = rotVel0;
+        acc = gravity;
         footPrint.Draw(pos);
-        //shoot = true;
+        shoot = true;
     }
 
     float time = 0;
@@ -148,6 +148,10 @@ public class Ball : MonoBehaviour
             //onGround = false;
             // Debug.Log($"OnTriggerExit");
         }
+    }
+
+    void OnDestroy(){
+        footPrint.Reset();
     }
 
     // Vector3 CalibContactPos(Vector3 normal, float dist){
