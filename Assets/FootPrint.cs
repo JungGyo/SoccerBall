@@ -12,12 +12,12 @@ public class FootPrint : MonoBehaviour
 
     void Awake(){
         footPrintList = new List<GameObject>();
+        footPrint.gameObject.SetActive(false);
         if (pool == null){
             pool = new List<GameObject>();
             for(int i = 0; i < 20; i++){
                 var obj = Instantiate(footPrint, parent);
                 pool.Add(obj);
-                obj.gameObject.SetActive(false);
             }
         }
     }
