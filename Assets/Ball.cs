@@ -9,10 +9,14 @@ public class Ball : MonoBehaviour
     public FootPrint footPrint;
     public bool onFootPrint;
     public bool onDrag;
-    public bool onSpinDrag;
-    public bool onSpinForce;
-    public float spinFactor = 1f; 
-    float bounceness = 0.5f; //축구공 반발계수 0.77~0.9 (콘크리트)
+    public bool onAngularDrag;
+    public bool onAngularForce;
+    public float bounceness = 0.5f; //축구공 반발계수 0.77~0.9 (콘크리트)
+    public float drag = 1f;
+    public float angularDrag = 1f;
+
+    public float dynamicFriction = 0.6f;
+    public float staticFriction = 0.4f;
     bool isMoving = false;
     float mass = 0.45f;
     float radius = 0.11f;
@@ -34,7 +38,9 @@ public class Ball : MonoBehaviour
         vel = vel0;
         rotVel = rotVel0;
         acc = gravity;
-        if (onFootPrint) footPrint.Draw(pos);
+
+        if (onFootPrint) 
+            footPrint.Draw(pos);
     }
 
     float time = 0;
@@ -56,11 +62,12 @@ public class Ball : MonoBehaviour
         if (onContact){
             if(reflectionVectors.Count > 0){
                 reflectionVectors.ForEach(nVector =>{
-                    vel = CalcReflectionVelocity(vel, nVector) * bounceness;
+                    vel = Vector3.Scale(CalcReflectionVelocity(vel, nVector), new Vector3(1, bounceness, 1));
                     acc = CalcReactionForceAcc(acc, nVector);
                 });
                 reflectionVectors.Clear();
             }else{
+                acc = CalcFrictionAcc(vel, acc, contactNormalVector);
                 acc = CalcReactionForceAcc(acc, contactNormalVector);
             }
         }
@@ -70,13 +77,13 @@ public class Ball : MonoBehaviour
         pos = CalcPos(pos, vel, acc, delta);
         vel = CalcVel(vel, acc, delta);
 
-        if (onSpinDrag)
-            rotAcc = CalcSpinDragRotAcc(rotVel);
+        if (onAngularDrag)
+            rotAcc = CalcAngularDragAcc(rotVel);
         rotVel = CalcVel(rotVel, rotAcc, delta);
 
         var dragAcc = onDrag? CalcDragAcc(vel) : Vector3.zero;
-        var spinForceAcc = onSpinForce? CalcSpinForceAcc(vel, rotVel) : Vector3.zero;
-        acc = dragAcc + gravity + spinForceAcc;
+        var angularForceAcc = onAngularForce? CalcAngularForceAcc(vel, rotVel) : Vector3.zero;
+        acc = dragAcc + gravity + angularForceAcc;
 
         this.transform.Rotate(rotVel, Space.Self);
 
@@ -105,21 +112,21 @@ public class Ball : MonoBehaviour
         var cd = 0.47f;
         var a = Mathf.Pow(radius, 2) * Mathf.PI;
         var u = vel.normalized * -1;
-        var force = 0.5f * AirDensity * Mathf.Pow(vel.magnitude, 2) * cd * a * u;
+        var force = 0.5f * AirDensity * Mathf.Pow(vel.magnitude, 2) * cd * a * u * drag;
 
-        // Debug.Log($"drag force: {force}, acc: {force/mass}, vel: {vel}");
+        Debug.Log($"drag force: {force}, acc: {force/mass}, vel: {vel}");
         return force / mass;
     }
 
     //가정1. 속이 빈 구(관성모멘트: 2/3 * m * r^2)
     //가정2. 반구에 저항 작용(항력계수: 0.42)
     //5호 축구공(지름: 0.22, 무게: 0.45)
-    Vector3 CalcSpinDragRotAcc(Vector3 w){
+    Vector3 CalcAngularDragAcc(Vector3 w){
         var inertia = 2/3f * mass * Mathf.Pow(radius, 2);
         var cd = 0.42f;
         var a = Mathf.Pow(radius, 2) * Mathf.PI /2;
         var u = w.normalized * -1;
-        var force = 0.5f * AirDensity * Mathf.Pow(w.magnitude * radius, 2) * cd * a * u;
+        var force = 0.5f * AirDensity * Mathf.Pow(w.magnitude * radius, 2) * cd * a * u * angularDrag;
 
         // Debug.Log($"drag force: {force}, acc: {force/mass}, vel: {vel}");
         return force / inertia;
@@ -128,26 +135,36 @@ public class Ball : MonoBehaviour
     //완전 탄성 충돌
     Vector3 CalcReflectionVelocity(Vector3 vel, Vector3 nVector){
         var n = nVector.normalized;
+        // Debug.Log($"CalcReflectionVelocity - normal vector:{n} /vel:{vel} /ref_vel:{Vector3.Reflect(vel, n)}");
         return Vector3.Reflect(vel, n); //(vel - 2f * Vector3.Dot(vel, n) * n);
+    }
+
+    Vector3 CalcFrictionAcc(Vector3 vel, Vector3 acc, Vector3 nVector){
+        var n = -1 * vel.normalized;
+        var normalAccMag = Vector3.Dot(acc, nVector.normalized);
+        var friction = dynamicFriction * normalAccMag * mass * n;
+        Debug.Log($"CalcFrictionAcc - F: {friction}/accMag: {normalAccMag}/normal vector:{n}");
+        return friction / mass;
     }
 
     //Wall은 질량이 무하다고 가정. 벽의 수직 방향 가속도는 0이 되어야함.(수직항력)
     Vector3 CalcReactionForceAcc(Vector3 acc, Vector3 nVector){
         var n = nVector.normalized;
         var newAcc = (acc - Vector3.Dot(acc, n) * n);
-        Debug.Log($"CalcReactionForceAcc - acc: {acc}/accNew: {newAcc}/normal vector:{n}");
+        // Debug.Log($"CalcReactionForceAcc - acc: {acc}/accNew: {newAcc}/normal vector:{n}");
         return newAcc;
     }
 
     // Magnus effect(회전에 의해 생성된 커브 볼 효과)
-    Vector3 CalcSpinForceAcc(Vector3 vel, Vector3 rotVel){
+    Vector3 CalcAngularForceAcc(Vector3 vel, Vector3 rotVel){
         var w = rotVel; //* Mathf.Deg2Rad;
         var a = Mathf.Pow(radius, 2) * Mathf.PI;
         var cv = Vector3.Cross(w.normalized, vel.normalized);
-        var force = 0.5f * spinFactor * w.magnitude * vel.magnitude * radius * a * cv;
+        var force = 0.5f * w.magnitude * vel.magnitude * radius * a * cv * angularDrag;
 
         return force / mass;
     }
+
 
     List<Vector3> reflectionVectors = new List<Vector3>();
     public bool onContact;
@@ -161,17 +178,18 @@ public class Ball : MonoBehaviour
         reflectionVectors.Add(contactNormalVector);
         onContact = true;
         // if (onFootPrint) footPrint.Draw(pos);
-        Debug.Log($"time: {time} - OnCollisionEnter({col.contacts.Length})/ contact nv: {contactNormalVector}");
+        Debug.Log($"name: {col.gameObject.name} - OnCollisionEnter({col.contacts.Length})/ contact nv: {contactNormalVector}");
     }
     void OnCollisionStay(Collision col){
         contactNormalVector = col.GetContact(0).normal.normalized;
+        // reflectionVectors.Add(contactNormalVector);
         onContact = true;
-        Debug.Log($"time: {time} - OnCollisionStay({col.contacts.Length})");
+        // Debug.Log($"time: {time} - OnCollisionStay({col.contacts.Length})");
     }
 
     void OnCollisionExit(Collision col){
         onContact = false;
-        Debug.Log($"time: {time} - OnCollisionExit({col.contacts.Length})");
+        Debug.Log($"name: {col.gameObject.name} - OnCollisionExit({col.contacts.Length})");
     }
 
     void OnDestroy(){
