@@ -42,8 +42,13 @@ public class GameManager : MonoBehaviour
         // ball.gameObject.SetActive(true);
         // ball.Spawn(ball.transform.position);
 
+        rigidbodyObject.Sleep();
         rigidbodyObject.transform.position = pos0;
+        rigidbodyObject.transform.rotation = Quaternion.Euler(Vector3.zero);
+        untiyPhysicsObject.Sleep();
         untiyPhysicsObject.transform.position = posUnity;
+        untiyPhysicsObject.transform.rotation = Quaternion.Euler(Vector3.zero);
+        untiyPhysicsObject.WakeUp();
     }
 
     public void OnShoot(){
