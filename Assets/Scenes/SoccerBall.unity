@@ -1354,6 +1354,8 @@ MonoBehaviour:
   bounceness: 0.5
   dynamicFriction: 0.6
   staticFriction: 0.4
+  Drag: 1
+  AngularDrag: 1
   velocity: {x: 0, y: 0, z: 0}
   angularVelocity: {x: 0, y: 0, z: 0}
   IgnoreCollisionFriction: 0
@@ -1361,6 +1363,7 @@ MonoBehaviour:
   t_cv: {x: 0, y: 0, z: 0}
   t_cav: {x: 0, y: 0, z: 0}
   t_Friction: {x: 0, y: 0, z: 0}
+  t_Tangent: {x: 0, y: 0, z: 0}
   t_Reaction: {x: 0, y: 0, z: 0}
   t_rotInertia: 0
   t_moment: {x: 0, y: 0, z: 0}
@@ -2216,7 +2219,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!54 &1167566187
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -2477,6 +2480,8 @@ MonoBehaviour:
   bounceness: 0
   dynamicFriction: 0.2
   staticFriction: 0.2
+  Drag: 0
+  AngularDrag: 1
   velocity: {x: 0, y: 0, z: 0}
   angularVelocity: {x: 0, y: 0, z: 0}
   IgnoreCollisionFriction: 1
@@ -2484,6 +2489,7 @@ MonoBehaviour:
   t_cv: {x: 0, y: 0, z: 0}
   t_cav: {x: 0, y: 0, z: 0}
   t_Friction: {x: 0, y: 0, z: 0}
+  t_Tangent: {x: 0, y: 0, z: 0}
   t_Reaction: {x: 0, y: 0, z: 0}
   t_rotInertia: 0
   t_moment: {x: 0, y: 0, z: 0}
@@ -3089,7 +3095,7 @@ MonoBehaviour:
   untiyPhysicsObject: {fileID: 726334039}
   pos0: {x: 0, y: 0, z: 0}
   posUnity: {x: 0, y: 0, z: 0}
-  vel0: {x: 0, y: 0, z: 3}
+  vel0: {x: 0, y: 0, z: -3}
   rotVel0: {x: 0, y: 0, z: 0}
   onFootPrint: 0
   onDrag: 0
