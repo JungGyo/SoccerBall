@@ -43,6 +43,10 @@ public class RigidbodyObject : MonoBehaviour
     public Vector3 angularVelocity = new Vector3();
     Vector3 angularAcc = new Vector3();
 
+    public Vector3 angularVelocityWorld {
+        get{ return transform.rotation * angularVelocity;}
+        }
+
     public Matrix4x4 Inertia{
         get{
             if (rigidbody == null)
@@ -77,6 +81,12 @@ public class RigidbodyObject : MonoBehaviour
         rigidbody.isKinematic = true;
 
         collider = GetComponent<Collider>();
+
+        //Time.timeScale = 0.1f;
+    }
+
+    Quaternion QuaternionConjugate(Quaternion q){
+        return new Quaternion(-q.x, -q.y, -q.z, q.w);
     }
 
     void FixedUpdate(){
@@ -104,16 +114,12 @@ public class RigidbodyObject : MonoBehaviour
                     reflectionDone.Add(key);
                 }
 
-
                 //Cotact(reaction + friction)
-                var acc = exForce/mass;
-                var angAcc = CalcAngularAcc(moment, angularVelocity);
-
                 reaction = CalcReactionForce(exForce, contact.normal);
-                moment += CalcMoment(reaction, pos - contact.normal * Radius);
+                moment += CalcWorldMoment(reaction, contact.point - pos);
 
                 friction = CalcFriction(exForce, contact.relativeVelocity, contact.normal, contact.tangent);
-                moment += CalcMoment(friction, pos - contact.normal * Radius);
+                moment += CalcWorldMoment(friction, contact.point - pos);
 
                 if (Mathf.Abs(angularVelocity.magnitude) > AngularVelocityThreshold){
                     var mag = Vector3.Cross(contact.tangent * (rotationalResistance * Radius), reaction).magnitude;
@@ -125,11 +131,11 @@ public class RigidbodyObject : MonoBehaviour
 
         force = (exForce + friction + reaction);
         velocity += CalcDeltaVelocity(acceration, delta);
-        pos += CalcDeltaPos(velocity, acceration, delta);
+        pos += CalcDeltaPos(velocity, delta);
 
-        angularAcc = CalcAngularAcc(moment, angularVelocity);
-        angularVelocity += CalcDeltaVelocity(angularAcc, delta);
-        transform.Rotate(angularVelocity, Space.Self);
+        angularAcc = CalcAngularAcc(moment, angularVelocityWorld);
+        angularVelocity += CalcDeltaAngularVelocity(angularAcc, delta);
+        transform.Rotate(angularVelocity * delta * Mathf.Rad2Deg, Space.Self);
     }
 
     float time;
@@ -141,11 +147,15 @@ public class RigidbodyObject : MonoBehaviour
         time += Time.deltaTime;
     }
 
-    Vector3 CalcDeltaPos(Vector3 v0, Vector3 a0, float t){
+    Vector3 CalcDeltaPos(Vector3 v0, float t){
         return v0 * t;
     }
 
     Vector3 CalcDeltaVelocity(Vector3 a0, float t){
+        return a0 * t;
+    }
+
+    Vector3 CalcDeltaAngularVelocity(Vector3 a0, float t){
         return a0 * t;
     }
 
@@ -181,14 +191,17 @@ public class RigidbodyObject : MonoBehaviour
             UpdateCotactInfo(this, other, ref contactInfo);
         }else{
             //RigidbodyObject가 아닌 isKinematic rigidbody인 경우 위치 보정.
-            pos -= point.normal.normalized * col.GetContact(0).separation;
+            if (Mathf.Abs(Vector3.Dot(pos - point.point, point.normal.normalized)) < Radius){
+                pos -= point.normal.normalized * col.GetContact(0).separation;
+            }
             UpdateCotactInfo(this, null, ref contactInfo);
         }
         contactDic[col.collider] = contactInfo;
 
-        // Debug.Log($"name: {col.gameObject.name} - OnCollisionEnter({col.contacts.Length})/ p1:{contactInfo.point - transform.position}/ v1:{velocity}/ rv:{contactInfo.relativeVelocity}/ nv: {contactInfo.normal}, tv:{contactInfo.tangent}, cv:{contactInfo.velocity}");
+        Debug.Log($"name: {col.gameObject.name} - OnCollisionEnter({col.contacts.Length})/ p1:{contactInfo.point - transform.position}/ v1:{velocity}/ rv:{contactInfo.relativeVelocity}/ nv: {contactInfo.normal}, tv:{contactInfo.tangent}, cv:{contactInfo.velocity}, cv2:{Vector3.Reflect(velocity, contactInfo.normal)}");
     }
 
+    public float t_Dist;
     void OnCollisionStay(Collision col){
         if (reflectionDone.Contains(col.collider)){
             var point = col.GetContact(0);
@@ -199,7 +212,10 @@ public class RigidbodyObject : MonoBehaviour
                 UpdateCotactInfo(this, other, ref contactInfo);
             }else{
                 //RigidbodyObject가 아닌 isKinematic rigidbody인 경우 위치 보정.
-                pos -= point.normal.normalized * col.GetContact(0).separation;
+                t_Dist = Mathf.Abs(Vector3.Dot(pos - point.point, point.normal.normalized));
+                if (Mathf.Abs(Vector3.Dot(pos - point.point, point.normal.normalized)) < Radius){
+                    pos -= point.normal.normalized * col.GetContact(0).separation;
+                }
                 UpdateCotactInfo(this, null, ref contactInfo);
             }
             contactDic[col.collider] = contactInfo;
@@ -217,53 +233,51 @@ public class RigidbodyObject : MonoBehaviour
     }
 
     public bool IgnoreCollisionFriction = true;
-    public float t_j;
-    public Vector3 t_cv;
-    public Vector3 t_cav;
     void UpdateCotactInfo(RigidbodyObject b1, RigidbodyObject b2, ref ContactInfo contact){
         if (b2 != null){//contact with RigidbodyObject.
-            //TODO: else case 에서 테스트한 내용으로 수정 필요. 
-            var p1 = contact.point - b1.transform.position;
-            var p2 = contact.point - b2.transform.position;
-            var v1 = b1.velocity + Vector3.Cross(b1.angularVelocity, p1);
-            var v2 = b2.velocity +  Vector3.Cross(b2.angularVelocity, p2);
-            var rv = v2 - v1;
+            // TODO: else case 에서 테스트한 내용으로 수정 필요. 
+            // var p1 = contact.point - b1.transform.position;
+            // var p2 = contact.point - b2.transform.position;
+            // var v1 = b1.velocity + Vector3.Cross(b1.angularVelocity, p1);
+            // var v2 = b2.velocity +  Vector3.Cross(b2.angularVelocity, p2);
+            // var rv = v2 - v1;
             
-            var j = (-(1 + (b1.bounceness + b2.bounceness)/2f) * Vector3.Dot(rv, contact.normal))/
-                ((1/b1.mass + 1/b2.mass) + (Vector3.Dot(contact.normal, (Vector3.Cross(Matrix4x4.Inverse(b1.Inertia).transpose * Vector3.Cross(p1, contact.normal), p1))))
-                + (Vector3.Dot(contact.normal, (Vector3.Cross(Matrix4x4.Inverse(b2.Inertia).transpose * Vector3.Cross(p2, contact.normal), p2)))));
+            // var j = (-(1 + (b1.bounceness + b2.bounceness)/2f) * Vector3.Dot(rv, contact.normal))/
+            //     ((1/b1.mass + 1/b2.mass) + (Vector3.Dot(contact.normal, (Vector3.Cross(Matrix4x4.Inverse(b1.Inertia).transpose * Vector3.Cross(p1, contact.normal), p1))))
+            //     + (Vector3.Dot(contact.normal, (Vector3.Cross(Matrix4x4.Inverse(b2.Inertia).transpose * Vector3.Cross(p2, contact.normal), p2)))));
 
-            contact.relativeVelocity = rv;
-            contact.tangent = Vector3.Cross(Vector3.Cross(contact.normal, rv), contact.normal).normalized;
+            // contact.relativeVelocity = rv;
+            // contact.tangent = Vector3.Cross(Vector3.Cross(contact.normal, rv), contact.normal).normalized;
 
-            var rvt = Vector3.Dot(rv, contact.tangent);
+            // var rvt = Vector3.Dot(rv, contact.tangent);
 
-            if (Mathf.Abs(rvt) > 0 && IgnoreCollisionFriction == false){
-                contact.velocity = b1.velocity + ((j * contact.normal) + ((b1.dynamicFriction * j) * contact.tangent)) / b1.mass;
-                contact.angularVelocity = b1.angularVelocity + (Vector3)(Matrix4x4.Inverse(b1.Inertia).transpose * Vector3.Cross(p1, ((j * contact.normal) + ((b1.dynamicFriction * j) * contact.tangent))));
-            }else{
-                contact.velocity = b1.velocity + (j * contact.normal) / b1.mass;
-                contact.angularVelocity = b1.angularVelocity + (Vector3)(Matrix4x4.Inverse(b1.Inertia).transpose * Vector3.Cross(p1, ((j * contact.normal))));
-            }
+            // if (Mathf.Abs(rvt) > 0 && IgnoreCollisionFriction == false){
+            //     contact.velocity = b1.velocity + ((j * contact.normal) + ((b1.dynamicFriction * j) * contact.tangent)) / b1.mass;
+            //     contact.angularVelocity = b1.angularVelocity + (Vector3)(Matrix4x4.Inverse(b1.Inertia).transpose * Vector3.Cross(p1, ((j * contact.normal) + ((b1.dynamicFriction * j) * contact.tangent))));
+            // }else{
+            //     contact.velocity = b1.velocity + (j * contact.normal) / b1.mass;
+            //     contact.angularVelocity = b1.angularVelocity + (Vector3)(Matrix4x4.Inverse(b1.Inertia).transpose * Vector3.Cross(p1, ((j * contact.normal))));
+            // }
         }else{//contact with non-RigidbodyObject.
-            var p1 = contact.point + contact.normal * Radius; //b1.transform.position;
-            var v1 = b1.velocity + Vector3.Cross(b1.angularVelocity * Mathf.Deg2Rad, p1);//Quaternion.Inverse(b1.transform.rotation) * (Vector3.Cross(b1.transform.rotation * b1.angularVelocity, p1));
+            var p1 = contact.point - b1.transform.position;
+            var v1 = b1.velocity + Vector3.Cross(b1.angularVelocityWorld, p1);
 
             var rv = v1;
             contact.relativeVelocity = rv;
-            contact.tangent = Vector3.Cross(Vector3.Cross(contact.normal, rv), contact.normal).normalized;
+            contact.tangent = -Vector3.Cross(Vector3.Cross(contact.normal, rv), contact.normal).normalized;
 
             var j = (-(1 + b1.bounceness/2f) * Vector3.Dot(rv, contact.normal))/
-                ((1/b1.mass) + (Vector3.Dot(contact.normal, (Vector3.Cross(Matrix4x4.Inverse(b1.Inertia) * Vector3.Cross(p1, contact.normal), p1))))
-                + 0);
+                ((1/b1.mass) + (Vector3.Dot(contact.normal, (Vector3.Cross(Matrix4x4.Inverse(b1.Inertia).transpose * Vector3.Cross(p1, contact.normal), p1)))));
+           
             var rvt = Vector3.Dot(rv, contact.tangent);
-
             if (Mathf.Abs(rvt) > 0 && IgnoreCollisionFriction == false){
                 contact.velocity = b1.velocity + ((j * contact.normal) + ((b1.dynamicFriction * j) * contact.tangent)) / b1.mass;
-                contact.angularVelocity = b1.angularVelocity + (Vector3)(Matrix4x4.Inverse(b1.Inertia).transpose * Vector3.Cross(p1, ((j * contact.normal) + ((b1.dynamicFriction * j) * contact.tangent))));
+                var worldAngVel = b1.angularVelocityWorld + (Vector3)(Matrix4x4.Inverse(b1.Inertia).transpose * Vector3.Cross(p1, ((j * contact.normal) + ((b1.dynamicFriction * j) * contact.tangent))));
+                contact.angularVelocity = QuaternionConjugate(b1.transform.rotation) * worldAngVel;
             }else{
                 contact.velocity = b1.velocity + (j * contact.normal) / b1.mass;
-                contact.angularVelocity = b1.angularVelocity + (Vector3)(Matrix4x4.Inverse(b1.Inertia).transpose * Vector3.Cross(p1, ((j * contact.normal))));
+                var worldAngVel = b1.angularVelocityWorld + (Vector3)(Matrix4x4.Inverse(b1.Inertia).transpose * Vector3.Cross(p1, ((j * contact.normal))));
+                contact.angularVelocity = QuaternionConjugate(b1.transform.rotation) * worldAngVel;
             }
         }
     }
@@ -275,7 +289,7 @@ public class RigidbodyObject : MonoBehaviour
         var normalForceMag = Mathf.Abs(Vector3.Dot(force, normal.normalized));
         var tangentVel = Vector3.Project(relativeVelocity, tangent);
         var fc = dynamicFriction;//Mathf.Abs(tangentVel.magnitude) > 0.1? dynamicFriction : 0;
-        var f = -fc * mass * normalForceMag * tangent.normalized;
+        var f = fc * mass * normalForceMag * tangent.normalized;
         // Debug.Log($"CalcFriction - F: {force}/nVector:{n}/ uVector:{tangent}");
         t_Friction = f;
         t_Tangent = tangent;
@@ -293,29 +307,40 @@ public class RigidbodyObject : MonoBehaviour
     }
 
     public float t_rotInertia;
-    public Vector3 t_moment;
     public Vector3 t_angularAcc;
-    Vector3 CalcAngularAcc(Vector3 moment, Vector3 angularVelocity){
+    Vector3 CalcAngularAcc(Vector3 moment, Vector3 worldAngVel){
         var invInertia = Matrix4x4.Inverse(Inertia);
-        // var rotInertia = Vector3.Cross(angularVelocity, (Inertia * angularVelocity));
-        var rotInertia = Vector3.Scale(angularVelocity, (Vector3)(Inertia * new Vector3(Mathf.Abs(angularVelocity.x),  Mathf.Abs(angularVelocity.y),Mathf.Abs(angularVelocity.z)))); 
+        var rotInertia = Vector3.Cross(worldAngVel, (Inertia * worldAngVel));
+        //var rotInertia = Vector3.Scale(angularVelocity, (Vector3)(Inertia * new Vector3(Mathf.Abs(angularVelocity.x),  Mathf.Abs(angularVelocity.y),Mathf.Abs(angularVelocity.z)))); 
         var a = invInertia * (moment - rotInertia);
 
         if(moment.magnitude > 0)
             t_rotInertia = rotInertia.magnitude / moment.magnitude;
-        t_moment = moment;
         t_angularAcc = a;
         //Debug.Log($"CalcTorque - T: {momentSum}/ I:{rotInertia}/ a:{a}/ w:{w}/ (q * w):{(inertia * w)}/ i:{inertia}/ inv: {invInertia}");
         // Debug.Log($"a:({a.x},{a.y},{a.z})/ w:({acc.x},{acc.y},{acc.z})/i:{rotInertia}");
-        return a; 
+        return QuaternionConjugate(transform.rotation) * a;
     }
 
     Vector3 CalcMoment(Vector3 force, Vector3 actPoint){
         var center = pos;
         var localPos = center - actPoint;
-        var torque = Vector3.Cross(force, localPos);
+        var m = Vector3.Cross(force, localPos);
 
-        return torque;
+        return m;
+    }
+
+    Vector3 t_moment;
+    Vector3 t_momentWorld;
+    Vector3 CalcWorldMoment(Vector3 localForce, Vector3 localPoint){
+        var worldPoint = QuaternionConjugate(transform.rotation) * localPoint;
+        var worldForce = QuaternionConjugate(transform.rotation) * localForce;
+        var m = Vector3.Cross(worldPoint, worldForce);
+
+        t_moment = CalcMoment(localForce, localPoint);
+        t_momentWorld = m;
+
+        return m;
     }
 
     Vector3 CalcDragForce(Vector3 velocity){

@@ -839,7 +839,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &682621392
 Transform:
   m_ObjectHideFlags: 0
@@ -1104,7 +1104,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 726334037}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 3.6, y: 6.1, z: 0}
+  m_LocalPosition: {x: 3.6, y: 3, z: 0}
   m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
   m_Children:
   - {fileID: 1492990821}
@@ -1351,7 +1351,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rotationalResistance: 0.025
-  bounceness: 0.5
   dynamicFriction: 0.6
   staticFriction: 0.4
   Drag: 1
@@ -1359,14 +1358,10 @@ MonoBehaviour:
   velocity: {x: 0, y: 0, z: 0}
   angularVelocity: {x: 0, y: 0, z: 0}
   IgnoreCollisionFriction: 0
-  t_j: 0
-  t_cv: {x: 0, y: 0, z: 0}
-  t_cav: {x: 0, y: 0, z: 0}
   t_Friction: {x: 0, y: 0, z: 0}
   t_Tangent: {x: 0, y: 0, z: 0}
   t_Reaction: {x: 0, y: 0, z: 0}
   t_rotInertia: 0
-  t_moment: {x: 0, y: 0, z: 0}
   t_angularAcc: {x: 0, y: 0, z: 0}
 --- !u!1 &912988178
 GameObject:
@@ -2136,7 +2131,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1162708047
 Transform:
   m_ObjectHideFlags: 0
@@ -2306,7 +2301,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1167566186}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -4.2, z: -3.43}
+  m_LocalPosition: {x: 0, y: -4.2, z: -15.1}
   m_LocalScale: {x: 30, y: 20, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -2453,7 +2448,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1241271831}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 6.1, z: 0}
+  m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
   m_Children:
   - {fileID: 693914651}
@@ -2477,22 +2472,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rotationalResistance: 0
-  bounceness: 0
   dynamicFriction: 0.2
   staticFriction: 0.2
   Drag: 0
-  AngularDrag: 1
+  AngularDrag: 0
   velocity: {x: 0, y: 0, z: 0}
   angularVelocity: {x: 0, y: 0, z: 0}
   IgnoreCollisionFriction: 1
-  t_j: 0
-  t_cv: {x: 0, y: 0, z: 0}
-  t_cav: {x: 0, y: 0, z: 0}
   t_Friction: {x: 0, y: 0, z: 0}
   t_Tangent: {x: 0, y: 0, z: 0}
   t_Reaction: {x: 0, y: 0, z: 0}
   t_rotInertia: 0
-  t_moment: {x: 0, y: 0, z: 0}
   t_angularAcc: {x: 0, y: 0, z: 0}
 --- !u!54 &1241271834
 Rigidbody:
@@ -2773,7 +2763,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1492990821
 Transform:
   m_ObjectHideFlags: 0
@@ -3095,7 +3085,7 @@ MonoBehaviour:
   untiyPhysicsObject: {fileID: 726334039}
   pos0: {x: 0, y: 0, z: 0}
   posUnity: {x: 0, y: 0, z: 0}
-  vel0: {x: 0, y: 0, z: -3}
+  vel0: {x: 0, y: 5, z: -10}
   rotVel0: {x: 0, y: 0, z: 0}
   onFootPrint: 0
   onDrag: 0
@@ -4318,7 +4308,7 @@ Rigidbody:
   m_UseGravity: 0
   m_IsKinematic: 1
   m_Interpolate: 0
-  m_Constraints: 126
+  m_Constraints: 0
   m_CollisionDetection: 3
 --- !u!1 &1464222185811574319
 GameObject:
@@ -4395,7 +4385,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1464010562386573119}
-  m_Material: {fileID: 13400000, guid: 61aabd4b2564a57499e96a58c28a903c, type: 2}
+  m_Material: {fileID: 0}
   m_IsTrigger: 0
   m_Enabled: 1
   serializedVersion: 2
