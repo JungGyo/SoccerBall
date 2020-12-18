@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
-[RequireComponent(typeof(Collider))]
-public class RigidbodyObject : MonoBehaviour
+[RequireComponent(typeof(SphereCollider))]
+public class SphereRigidBody : MonoBehaviour
 {
     const float VelocityThreshold = 0.001f;
     const float AngularVelocityThreshold = 0.001f;
@@ -64,23 +64,19 @@ public class RigidbodyObject : MonoBehaviour
 
     float Radius{
         get{
-            if(collider.GetType() != typeof(SphereCollider)){
-                Debug.LogError($"{this.gameObject.name} needs <SphereCollider> component for Radius");
-                return 0;
-            }
-            return ((SphereCollider)collider).radius * transform.lossyScale.x;
+            return collider.radius * transform.lossyScale.x;
         }
     }
 
     Rigidbody rigidbody;
-    Collider collider;
+    SphereCollider collider;
     void Awake(){
         rigidbody = GetComponent<Rigidbody>();
         rigidbody.isKinematic = false;
         rigidbody.ResetInertiaTensor();
         rigidbody.isKinematic = true;
 
-        collider = GetComponent<Collider>();
+        collider = GetComponent<SphereCollider>();
 
         //Time.timeScale = 0.1f;
     }
@@ -158,13 +154,6 @@ public class RigidbodyObject : MonoBehaviour
     Vector3 CalcDeltaAngularVelocity(Vector3 a0, float t){
         return a0 * t;
     }
-
-    // public void AddForce(Vector3 force, Vector3 Point){
-    //     acc = force/mass;
-    // }
-
-    //List<ContactPoint> contactPoints = new List<ContactPoint>();
-
     
     public class ContactInfo{
         public Vector3 point;
@@ -185,15 +174,13 @@ public class RigidbodyObject : MonoBehaviour
 
         var point = col.GetContact(0);
         var contactInfo = new ContactInfo(){point = point.point, normal = point.normal.normalized};
-        var other = col.gameObject.GetComponent<RigidbodyObject>();
+        var other = col.gameObject.GetComponent<SphereRigidBody>();
         
         if (other != null){
             UpdateCotactInfo(this, other, ref contactInfo);
         }else{
-            //RigidbodyObject가 아닌 isKinematic rigidbody인 경우 위치 보정.
-            if (Mathf.Abs(Vector3.Dot(pos - point.point, point.normal.normalized)) < Radius){
-                pos -= point.normal.normalized * col.GetContact(0).separation;
-            }
+            //SphereRigidBody가 아닌 isKinematic rigidbody인 경우 위치 보정.
+            pos -= point.normal.normalized * col.GetContact(0).separation;
             UpdateCotactInfo(this, null, ref contactInfo);
         }
         contactDic[col.collider] = contactInfo;
@@ -201,21 +188,17 @@ public class RigidbodyObject : MonoBehaviour
         Debug.Log($"name: {col.gameObject.name} - OnCollisionEnter({col.contacts.Length})/ p1:{contactInfo.point - transform.position}/ v1:{velocity}/ rv:{contactInfo.relativeVelocity}/ nv: {contactInfo.normal}, tv:{contactInfo.tangent}, cv:{contactInfo.velocity}, cv2:{Vector3.Reflect(velocity, contactInfo.normal)}");
     }
 
-    public float t_Dist;
     void OnCollisionStay(Collision col){
         if (reflectionDone.Contains(col.collider)){
             var point = col.GetContact(0);
             var contactInfo = new ContactInfo(){point = point.point, normal = point.normal.normalized};
-            var other = col.gameObject.GetComponent<RigidbodyObject>();
+            var other = col.gameObject.GetComponent<SphereRigidBody>();
             
             if (other != null){
                 UpdateCotactInfo(this, other, ref contactInfo);
             }else{
-                //RigidbodyObject가 아닌 isKinematic rigidbody인 경우 위치 보정.
-                t_Dist = Mathf.Abs(Vector3.Dot(pos - point.point, point.normal.normalized));
-                if (Mathf.Abs(Vector3.Dot(pos - point.point, point.normal.normalized)) < Radius){
-                    pos -= point.normal.normalized * col.GetContact(0).separation;
-                }
+                //SphereRigidBody가 아닌 isKinematic rigidbody인 경우 위치 보정.
+                //pos -= point.normal.normalized * col.GetContact(0).separation;
                 UpdateCotactInfo(this, null, ref contactInfo);
             }
             contactDic[col.collider] = contactInfo;
@@ -233,7 +216,7 @@ public class RigidbodyObject : MonoBehaviour
     }
 
     public bool IgnoreCollisionFriction = true;
-    void UpdateCotactInfo(RigidbodyObject b1, RigidbodyObject b2, ref ContactInfo contact){
+    void UpdateCotactInfo(SphereRigidBody b1, SphereRigidBody b2, ref ContactInfo contact){
         if (b2 != null){//contact with RigidbodyObject.
             // TODO: else case 에서 테스트한 내용으로 수정 필요. 
             // var p1 = contact.point - b1.transform.position;
@@ -266,7 +249,7 @@ public class RigidbodyObject : MonoBehaviour
             contact.relativeVelocity = rv;
             contact.tangent = -Vector3.Cross(Vector3.Cross(contact.normal, rv), contact.normal).normalized;
 
-            var j = (-(1 + b1.bounceness/2f) * Vector3.Dot(rv, contact.normal))/
+            var j = (-(1 + b1.bounceness / 2f) * Vector3.Dot(rv, contact.normal))/
                 ((1/b1.mass) + (Vector3.Dot(contact.normal, (Vector3.Cross(Matrix4x4.Inverse(b1.Inertia).transpose * Vector3.Cross(p1, contact.normal), p1)))));
            
             var rvt = Vector3.Dot(rv, contact.tangent);

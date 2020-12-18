@@ -8,7 +8,7 @@ public class GameManager : MonoBehaviour
     public Transform ballParent;
     Ball ball;
 
-    public RigidbodyObject rigidbodyObject;
+    public SphereRigidBody rigidbodyObject;
     public Rigidbody untiyPhysicsObject;
 
     public Vector3 pos0;
@@ -28,7 +28,7 @@ public class GameManager : MonoBehaviour
     }
 
     void Start(){
-        ballPrefab.gameObject.SetActive(false);
+        // ballPrefab.gameObject.SetActive(false);
         pos0 = rigidbodyObject.transform.position;
         posUnity = untiyPhysicsObject.transform.position;
         OnSpawnBall();
