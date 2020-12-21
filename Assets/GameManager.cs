@@ -13,7 +13,7 @@ public class GameManager : MonoBehaviour
 
     public Vector3 pos0;
     public Vector3 posUnity;
-    public Vector3 vel0 = new Vector3(0, 10f, -20f);  
+    public Vector3 acc0 = new Vector3(0, 10f, -30f);  
     public Vector3 rotVel0 = new Vector3();
 
     public bool onFootPrint = false;
@@ -60,7 +60,13 @@ public class GameManager : MonoBehaviour
         // ball.onFootPrint = onFootPrint;
         // ball.Shoot(vel0, rotVel0);
 
-        rigidbodyObject.velocity = vel0;
-        untiyPhysicsObject.velocity = vel0;
+        //Add Impulse Force
+        rigidbodyObject.AddForce(acc0/Time.fixedDeltaTime, shootPoint);
+        untiyPhysicsObject.AddForceAtPosition(acc0/Time.fixedDeltaTime, untiyPhysicsObject.transform.position + shootPoint);
+    }
+
+    [SerializeField] Vector3 shootPoint;
+    public void SetShootPoint(Vector3 localPos){
+        shootPoint = localPos;
     }
 }
